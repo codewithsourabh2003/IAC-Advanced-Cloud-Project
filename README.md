@@ -5,7 +5,7 @@
 
 
 # IAC Project using CloudFormation (high availability web app)
- > This is the IAC project for the [Cloud DevOps Engineer Nano-degree on Udacity](https://www.udacity.com/course/cloud-dev-ops-nanodegree--nd9991).
+ > This is the IAC project for the College Project
  ---
  ### Problem Summary
  > Create a launch configuration to deploy 4 servers (2 in each private subnet). You need 2 vCPUs with at least 4GB of RAM. The OS is required to be Ubuntu 18. So choose the AMI that best fits the specs and allocate at least 10 GB of disk space.
