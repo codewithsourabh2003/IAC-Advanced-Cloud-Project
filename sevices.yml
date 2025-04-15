@@ -1,0 +1,250 @@
+# =========================================================================
+
+Description: Servers for Udacity IAC project
+
+# =========================================================================
+
+Parameters:
+  EnvironmentName:
+    Description: Prefix for resources
+    Type: String
+
+  AmiId:
+    Description: AMI id
+    Type: String
+    Default: ami-0ee23bfc74a881de5
+
+  BastionSSHKey:
+    Description: Name of key pair used to ssh to bastion host
+    Type: String
+
+  BastionInstanceType:
+    Description: Type used for creating bastion hosts
+    Type: String
+
+  LaunchConfigInstanceType:
+    Description: Type used for creating EC2 instances in ASG
+    Type: String
+
+# =========================================================================
+
+Resources:
+
+  # -----------------------------------------------------------------------
+  # IAM Role & profile
+  UdacityS3ReadOnlyEC2:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+
+  ProfileWithRolesForApp:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref UdacityS3ReadOnlyEC2
+  # -----------------------------------------------------------------------
+
+  # -----------------------------------------------------------------------
+  # Security Groups
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Load balancer traffic control
+      GroupName: Load-balancer-security-group
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${EnvironmentName}-VPC-ID"
+      SecurityGroupIngress:
+      - IpProtocol: TCP
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: TCP
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-LB-SEC-GP
+
+  WebAppServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Web application Security Group
+      GroupName: Web-application-security-group
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${EnvironmentName}-VPC-ID"
+      SecurityGroupIngress:
+      - Description: Inbound rule to allow the Load Balancer.
+        IpProtocol: TCP
+        SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+        FromPort: 80
+        ToPort: 80
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-WA-SEC-GP
+  
+  BastionHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH to bastion host - default port
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+      SecurityGroupEgress:
+      - CidrIp: 0.0.0.0/0
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${EnvironmentName}-VPC-ID"
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-BH-SEC-GP
+  # -----------------------------------------------------------------------
+
+  # -----------------------------------------------------------------------
+  # Configurations for load balancer
+  WebAppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: / 
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 7
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${EnvironmentName}-VPC-ID"
+  
+  WebAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+      - Fn::ImportValue: !Sub ${EnvironmentName}-PUB-SUB-1-ID
+      - Fn::ImportValue: !Sub ${EnvironmentName}-PUB-SUB-2-ID
+      SecurityGroups: 
+      - !Ref LoadBalancerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-LB
+  
+  WebAppLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref WebAppTargetGroup
+      LoadBalancerArn: !Ref WebAppLoadBalancer
+      Port: '80'
+      Protocol: HTTP
+  
+  WebAppLoadBalancerListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref WebAppTargetGroup
+      Conditions:
+      - Field: path-pattern
+        Values: [/]
+      ListenerArn: !Ref WebAppLoadBalancerListener
+      Priority: 1
+  # -----------------------------------------------------------------------
+
+  # -----------------------------------------------------------------------
+  # Bastion Host (Jumpbox for developer access)
+  BastionHost1:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      SubnetId:
+        Fn::ImportValue: !Sub "${EnvironmentName}-PUB-SUB-1-ID"
+      AvailabilityZone: !Select [0, !GetAZs '']
+      InstanceType: !Ref BastionInstanceType
+      KeyName: !Ref BastionSSHKey
+      SecurityGroupIds:
+        - !GetAtt BastionHostSecurityGroup.GroupId
+  BastionHost2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      SubnetId:
+        Fn::ImportValue: !Sub "${EnvironmentName}-PUB-SUB-2-ID"
+      AvailabilityZone: !Select [1, !GetAZs '']
+      InstanceType: !Ref BastionInstanceType
+      KeyName: !Ref BastionSSHKey
+      SecurityGroupIds:
+        - !GetAtt BastionHostSecurityGroup.GroupId
+  # -----------------------------------------------------------------------
+
+  # -----------------------------------------------------------------------
+  # Configurations for auto scaling
+  WebAppLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref AmiId
+      SecurityGroups:
+      - Ref: WebAppServerSecurityGroup
+      InstanceType: !Ref LaunchConfigInstanceType
+      BlockDeviceMappings:
+      - DeviceName: "/dev/sdk"
+        Ebs:
+          VolumeSize: '10'
+      UserData: !Base64 |
+        #!/bin/bash
+        sudo apt-get update -y
+        sudo apt-get install unzip awscli -y
+        sudo apt-get install apache2 -y
+        sudo systemctl start apache2.service
+        cd /var/www/html
+        aws s3 cp s3://hima-iac-project-bucket/webapp-udagram-project.zip .
+        unzip -o webapp-udagram-project.zip
+
+  WebAppAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: 
+      - Fn::ImportValue:
+          !Sub "${EnvironmentName}-PRIV-SUB-IDs"
+      LaunchConfigurationName: 
+        Ref: WebAppLaunchConfiguration
+      MinSize: '4'
+      DesiredCapacity: '4'
+      MaxSize: '4'
+      TargetGroupARNs: 
+      - Ref: WebAppTargetGroup
+  # -----------------------------------------------------------------------
+
+# =========================================================================
+
+Outputs:
+
+  LBDNSUrl:
+    Description: Loadbalancer DNS URL
+    Value: !Join ["", ["http://", !GetAtt WebAppLoadBalancer.DNSName]]
+    Export:
+      Name: !Sub "${EnvironmentName}-LB-DNS-URL"
+
+# =========================================================================
