@@ -1,5 +1,8 @@
-![Uploading Cloud-Architecture-Diagram.png…]()
-)# IAC-Advanced-Cloud-Project
+# IAC-Advanced-Cloud-Project
+![Cloud-Architecture-Diagram](https://github.com/user-attachments/assets/c07f8c9e-e2fb-4eeb-83e0-6e6cdeb0ce89)
+
+
+
 # IAC Project using CloudFormation (high availability web app)
  > This is the IAC project for the [Cloud DevOps Engineer Nano-degree on Udacity](https://www.udacity.com/course/cloud-dev-ops-nanodegree--nd9991).
  ---
