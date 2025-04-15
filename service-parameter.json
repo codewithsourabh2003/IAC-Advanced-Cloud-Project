@@ -1,0 +1,22 @@
+[
+	{
+		"ParameterKey": "EnvironmentName",
+		"ParameterValue": "IAC-PROJECT"
+	},
+    {
+		"ParameterKey": "AmiId",
+		"ParameterValue": "ami-0ee23bfc74a881de5"
+	},
+    {
+		"ParameterKey": "BastionSSHKey",
+		"ParameterValue": "iac-project-bastion"
+	},
+    {
+		"ParameterKey": "BastionInstanceType",
+		"ParameterValue": "t2.micro"
+    },
+    {
+		"ParameterKey": "LaunchConfigInstanceType",
+		"ParameterValue": "t3.small"
+    }
+]
