@@ -1,4 +1,4 @@
-# IAC-Advanced-Cloud-Project
+![Cloud-Architecture-Diagram](https://github.com/user-attachments/assets/87203cd3-5590-45cb-935f-825a5887a706)# IAC-Advanced-Cloud-Project
 # IAC Project using CloudFormation (high availability web app)
  > This is the IAC project for the [Cloud DevOps Engineer Nano-degree on Udacity](https://www.udacity.com/course/cloud-dev-ops-nanodegree--nd9991).
  ---
@@ -10,7 +10,7 @@
  > You can provide SSH key for developer access to troubleshoot while creating the script.
  ---
  ### My Cloud Architecture Design
- ![Cloud Architecture Diagram](Cloud-Architecture-Diagram.png)
+
  ---
  ### IAC Files
  * Network Infrastructure Stack
