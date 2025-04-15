@@ -1,5 +1,6 @@
 # IAC-Advanced-Cloud-Project
-![Cloud-Architecture-Diagram](https://github.com/user-attachments/assets/c07f8c9e-e2fb-4eeb-83e0-6e6cdeb0ce89)
+![Cloud-Architecture-Diagram](https://github.com/user-attachments/assets/14e95bd3-e53c-445f-b37b-e2107bb9fb79)
+
 
 
 
